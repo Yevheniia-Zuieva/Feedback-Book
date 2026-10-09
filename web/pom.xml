@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -11,19 +12,17 @@
     </parent>
 
     <artifactId>web</artifactId>
-    <packaging>war</packaging>
+    <packaging>jar</packaging>
     <name>web</name>
 
     <properties>
-        <jakarta.servlet.version>5.0.0</jakarta.servlet.version>
-        <jetty.version>11.0.20</jetty.version>
         <jackson.version>2.17.2</jackson.version>
         <slf4j.version>2.0.13</slf4j.version>
         <logback.version>1.5.7</logback.version>
     </properties>
 
     <dependencies>
-        <!-- залежимо від core та persistence -->
+        <!-- Залежності від модулів core та persistence -->
         <dependency>
             <groupId>sumdu.edu.ua</groupId>
             <artifactId>core</artifactId>
@@ -35,20 +34,21 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- Javalin 6 -->
         <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
-            <version>${jakarta.servlet.version}</version>
-            <scope>provided</scope>
+            <groupId>io.javalin</groupId>
+            <artifactId>javalin</artifactId>
+            <version>6.2.0</version>
         </dependency>
 
+        <!-- Jackson для серіалізації JSON -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
         </dependency>
 
-        <!-- логування -->
+        <!-- Логування: SLF4J + Logback -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -59,30 +59,22 @@
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>2.17.2</version>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- Плагін для запуску main-класу через команду: mvn -pl web exec:java -->
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-war-plugin</artifactId>
-                <version>3.4.0</version>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
                 <configuration>
-                    <failOnMissingWebXml>false</failOnMissingWebXml>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-maven-plugin</artifactId>
-                <version>${jetty.version}</version>
-                <configuration>
-                    <webApp>
-                        <contextPath>/</contextPath>
-                    </webApp>
-                    <httpConnector>
-                        <port>8080</port>
-                    </httpConnector>
+                    <mainClass>sumdu.edu.ua.web.JavalinBookApp</mainClass>
                 </configuration>
             </plugin>
         </plugins>

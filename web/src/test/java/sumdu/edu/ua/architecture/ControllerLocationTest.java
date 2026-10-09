@@ -1,4 +1,4 @@
-package sumdu.edu.ua.web;
+package sumdu.edu.ua.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -8,12 +8,12 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 
 public class ControllerLocationTest {
     @Test
-    void servletsShouldResideOnlyInWeb() {
+    void controllersShouldResideOnlyInWeb() {
         JavaClasses imported = new ClassFileImporter()
                 .importPackages("sumdu.edu.ua");
 
         classes()
-                .that().haveSimpleNameEndingWith("Servlet")
+                .that().haveSimpleNameEndingWith("Controller")
                 .should().resideInAPackage("..web..")
                 .check(imported);
     }

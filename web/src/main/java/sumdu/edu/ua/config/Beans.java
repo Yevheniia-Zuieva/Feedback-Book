@@ -1,4 +1,4 @@
-package sumdu.edu.ua.web.http;
+package sumdu.edu.ua.config;
 
 import sumdu.edu.ua.core.service.CommentService;
 import sumdu.edu.ua.core.port.CatalogRepositoryPort;

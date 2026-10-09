@@ -1,4 +1,4 @@
-package sumdu.edu.ua.core;
+package sumdu.edu.ua.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;

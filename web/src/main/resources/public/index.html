@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8">
+    <title>Каталог книг (Javalin REST API)</title>
+    <style>
+        body { font-family: sans-serif; margin: 30px; }
+        ul { list-style-type: square; }
+        li { margin-bottom: 8px; }
+    </style>
+</head>
+<body>
+
+<h1>Каталог книг</h1>
+<ul id="book-list">Завантаження книг...</ul>
+
+<script>
+async function loadBooks() {
+    try {
+        const response = await fetch("/api/books");
+        const data = await response.json();
+
+        const books = data.items ?? data;
+        const list = document.getElementById("book-list");
+        list.innerHTML = "";
+
+        for (const book of books) {
+            const item = document.createElement("li");
+            item.textContent = `${book.title} — ${book.author} (${book.pubYear})`;
+            list.appendChild(item);
+        }
+    } catch (e) {
+        document.getElementById("book-list").innerHTML = "<li style='color:red;'>Помилка завантаження</li>";
+    }
+}
+
+loadBooks();
+</script>
+
+</body>
+</html>
