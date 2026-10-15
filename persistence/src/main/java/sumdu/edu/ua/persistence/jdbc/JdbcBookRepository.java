@@ -1,5 +1,7 @@
 package sumdu.edu.ua.persistence.jdbc;
 
+import org.springframework.stereotype.Repository;
+
 import sumdu.edu.ua.core.domain.Book;
 import sumdu.edu.ua.core.domain.Page;
 import sumdu.edu.ua.core.domain.PageRequest;
@@ -14,6 +16,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 
+@Repository
 public class JdbcBookRepository implements CatalogRepositoryPort {
 
     private static final Logger log = LoggerFactory.getLogger(JdbcBookRepository.class);

@@ -14,7 +14,7 @@ public class WebArchitectureTest {
 
         noClasses()
                 .that().resideInAPackage("..web..")
-                .and().doNotHaveSimpleName("Beans") // Дозволяємо фабриці залежати від БД
+                .and().doNotHaveSimpleName("ServletConfig")
                 .should().dependOnClassesThat()
                 .resideInAPackage("..persistence..")
                 .check(imported);
