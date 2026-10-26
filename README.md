@@ -1,15 +1,19 @@
-# Книга відгуків (Spring Boot MVC / Thymeleaf SSR & i18n)
+# Книга відгуків (Spring Boot MVC / Thymeleaf SSR & FreeMarker E-mail SMTP)
 
 Проєкт реалізує багатомодульний вебдодаток для управління каталогом книг та додавання/перегляду відгуків. Архітектура побудована за багатомодульним принципом Maven (`core`, `persistence`, `web`).
 
-У цій версії вебрівень мігровано на **серверний рендеринг (SSR)** за допомогою шаблонізатора **Thymeleaf**. Замість REST-контролерів з JSON-відповідями реалізовано MVC-контролери (`@Controller`), які генерують динамічні HTML-сторінки на основі об'єктів моделі (`Model`), забезпечують двостороннє зв'язування форм (Form Binding) та підтримують мультимовність (i18n).
+У цій версії застосунок розширено підтримкою **автоматичного формування та надсилання HTML-листів** на базі шаблонізатора **FreeMarker** та протоколу **Gmail SMTP**. Веб-інтерфейс працює на **Thymeleaf SSR** з підтримкою мультимовності (i18n), а збереження приватних конфігурацій (SMTP credentials) реалізовано через змінні середовища у файлі `.env`.
 
 ## Технологічний стек
 
 - **JDK:** 21
 - **Maven:** 3.9.16
-- **Фреймворк:** Spring Boot 3.3.4 (`spring-boot-starter-web`, `spring-boot-starter-thymeleaf`)
-- **Шаблонізатор:** Thymeleaf (HTML5 / SSR)
+- **Фреймворк:** Spring Boot 3.3.4 (`spring-boot-starter-web`, `spring-boot-starter-thymeleaf`, `spring-boot-starter-freemarker`, `spring-boot-starter-mail`)
+- **Шаблонізатори:**
+  - **Thymeleaf** (HTML5 SSR для вебсторінок)
+  - **Apache FreeMarker** (генерація HTML-листів)
+- **Безпека секретів:** `spring-dotenv` (зчитування конфігурацій із `.env`)
+- **Поштовий протокол:** JavaMailSender (Gmail SMTP, порт 587 з TLS)
 - **Вебсервер:** Вбудований Apache Tomcat (порт `8080`)
 - **СУБД:** H2 (вбудована, файловий режим)
 - **Тестування:** JUnit 5, ArchUnit
@@ -26,56 +30,82 @@ MPF_Labs/
 │   └── src/main/java/sumdu/edu/ua/core/
 ├── persistence/     # Реалізація портів доступу до БД H2 (@Repository)
 │   └── src/main/java/sumdu/edu/ua/persistence/
-└── web/             # MVC-контролери, Thymeleaf шаблони, конфігурація i18n
+└── web/             # MVC-контролери, Thymeleaf шаблони, FreeMarker поштовий сервіс
+    ├── .env                          # Локальні змінні середовища (SMTP Credentials - у .gitignore)
     ├── src/main/java/sumdu/edu/ua/
     │   ├── config/
-    │   │   ├── LanguageConfig.java   # Конфігурація i18n (LocaleResolver, Interceptor)
-    │   │   └── WebConfig.java        # Налаштування ресурсів та MVC
+    │   │   ├── EmailFreemarkerConfig.java   # Конфігурація окремого бандлу FreeMarker для листів
+    │   │   ├── LanguageConfig.java          # Конфігурація i18n (LocaleResolver, Interceptor)
+    │   │   └── WebConfig.java               # Налаштування ресурсів та MVC
+    │   ├── service/
+    │   │   ├── EmailTemplateProcessor.java  # Злиття FTL-шаблонів із моделлю даних
+    │   │   └── MailService.java             # Формування та надсилання MIME HTML-листів
     │   └── web/
-    │       ├── AppInit.java          # Точка входу Spring Boot
+    │       ├── AppInit.java                 # Точка входу Spring Boot
     │       └── controller/
-    │           ├── BooksController.java     # Маршрутизація каталогу книг
+    │           ├── BooksController.java     # Маршрутизація каталогу книг та виклик пошти
     │           └── CommentsController.java  # Маршрутизація коментарів
     └── src/main/resources/
-        ├── application.properties    # Налаштування UTF-8 та Thymeleaf
+        ├── application.properties    # Основні налаштування Spring Boot та ін'єкції з .env
+        ├── mail-templates/           # Каталог FreeMarker шаблонів електронної пошти
+        │   └── new_book.ftl          # HTML-шаблон сповіщення про нову книгу
         ├── messages.properties       # Ресурсний бандл (Українська / Default)
         ├── messages_en.properties    # Ресурсний бандл (Англійська)
         ├── messages_fr.properties    # Ресурсний бандл (Французька)
         └── templates/
-            ├── books.html            # Головний каталог книг
-            ├── book-form.html        # Форма додавання книги
-            ├── book-comments.html    # Перегляд та додавання відгуків
+            ├── books.html            # Головний каталог книг (Thymeleaf)
+            ├── book-form.html        # Форма додавання книги (Thymeleaf)
+            ├── book-comments.html    # Перегляд та додавання відгуків (Thymeleaf)
             └── fragments/
                 └── header.html       # Спільний фрагмент шапки та навігації
 ```
 
-## Архітектура Spring MVC, Thymeleaf та i18n
+## Архітектура, i18n та поштова система
 
-- **Серверний рендеринг (SSR):** контролери повертають назви HTML-представлень (наприклад, `return "books"`), а `ThymeleafViewResolver` рендерить підсумковий HTML з даними з `Model`.
-- **Зв'язування форм (Form Binding):** у шаблоні `book-form.html` атрибути `th:object="${bookForm}"` та `th:field="*{fieldName}"` забезпечують автоматичний двосторонній мапінг полів HTML-форми на Java-об'єкт `Book`.
-- **Локалізація та мультимовність (i18n):**
-  - Використовується `CookieLocaleResolver` для збереження обраної мови у кукі `lang` (мова за замовчуванням — українська `uk`).
-  - `LocaleChangeInterceptor` перехоплює параметр `?lang=` у URL (наприклад, `/books?lang=en`).
-  - Усі текстові елементи виводяться через ключі ресурсних бандлів `th:text="#{key}"`.
-- **Шаблонізація (Layout Fragments):** спільний заголовок та меню навігації винесено у фрагмент `fragments/header.html` та підключаються на сторінках через `th:replace="~{fragments/header :: header}"`.
+- **Серверний рендеринг (Thymeleaf SSR):** MVC-контролери повертають назви HTML-представлень, а `ThymeleafViewResolver` формує сторінки на основі об'єкта `Model`.
+- **Локалізація та мультимовність (i18n):** Використовується `CookieLocaleResolver` та `LocaleChangeInterceptor` для обробки параметру `?lang=en|fr|uk`.
+- **Генерація листів (FreeMarker Engine):**
+  - Для поштових шаблонів налаштовано окремий бін `freemarkerEmailConfig` у класі `EmailFreemarkerConfig`, який зчитує FTL-шаблони з директорії `classpath:/mail-templates/`.
+  - `EmailTemplateProcessor` виконує рендеринг FTL-шаблону `new_book.ftl` у динамічний HTML-рядок.
+- **SMTP Інтеграція та Пошта (`MailService`):**
+  - При додаванні книги через `BooksController` автоматично викликається `mailService.sendNewBookEmail(savedBook)`.
+  - `MailService` створює `MimeMessage` із підтримкою HTML (`MimeMessageHelper`) і здійснює надсилання листа через `JavaMailSender` (Gmail SMTP).
+- **Безпека секретів (.env):**
+  - Усі чутливі дані (паролі застосунків, поштові скриньки) винесені у файл `.env` та автоматично завантажуються бібліотекою `spring-dotenv`. Файл `.env` додано до `.gitignore`.
 
 ## Бізнес-правила
 
-- **Умовне відображення:** якщо список книг або коментарів порожній, у шаблонах використовується `th:if` / `th:unless` для відображення відповідного повідомлення ("Немає книг.", "Коментарів поки немає.").
-- **Видалення відгуків:** згідно з доменним правилом у `CommentService`, відгук до книги дозволено видаляти лише протягом 24 годин з моменту створення.
+- **Поштові сповіщення:** При успішному додаванні нової книги адміністратор отримує стилізований HTML-лист із логотипом з GitHub, назвою, автором, роком видання та датою додавання.
+- **Визначення раритетності:** У шаблоні `new_book.ftl` за допомогою директиви `<#if>` аналізується рік видання книги: якщо `year < 2000`, у листі відображається плашка **«Раритетне видання!»**.
+- **Умовне відображення в UI:** Якщо список книг або коментарів порожній, у Thymeleaf-шаблонах використовується `th:if` / `th:unless` для відображення відповідного повідомлення.
+- **Видалення відгуків:** Згідно з доменним правилом у `CommentService`, відгук до книги дозволено видаляти лише протягом 24 годин з моменту створення.
 
 ## Команди запуску
 
 Збірка здійснюється з кореня проєкту, запуск — з модуля `web`.
 
-1. **Повна збірка проєкту та виконання тестів (у корені):**
+1. **Налаштування секретів у файлі `web/.env`:** Перед першим запуском переконайтеся у наявності файлу `.env` з вашими даними:
+
+   Фрагмент кода
+
+   ```env
+   MAIL_USERNAME=your_gmail@gmail.com
+   MAIL_PASSWORD=your_16_char_app_password
+   MAIL_ADMIN=recipient_email@gmail.com
+   ```
+
+2. **Повна збірка проєкту та виконання тестів (у корені):**
+
+   Bash
 
    ```bash
    mvn clean install
    ```
 
-2. **Запуск Spring Boot застосунку:**
+3. **Запуск Spring Boot застосунку:**
    - **Через Maven CLI:**
+
+     Bash
 
      ```bash
      mvn spring-boot:run -pl web
@@ -94,6 +124,8 @@ MPF_Labs/
 
 Запуск тестів з кореневої директорії:
 
+Bash
+
 ```bash
 mvn test
 ```
@@ -102,9 +134,9 @@ mvn test
 
 ### Маршрути каталогу книг (`BooksController`)
 
-- **`GET /books`** — відображення каталогу книг (`books.html`). Підтримує перемикання мов через параметр `?lang=en` або `?lang=fr`.
+- **`GET /books`** — відображення каталогу книг (`books.html`). Підтримує перемикання мов (`?lang=en`, `?lang=fr`).
 - **`GET /books/add`** — відображення форми додавання нової книги (`book-form.html`).
-- **`POST /books`** — обробка відправки форми створення книги з перенаправленням (`redirect:/books`).
+- **`POST /books`** — обробка відправки форми створення книги, автоматичне відправлення HTML-листа через FreeMarker/SMTP та перенаправлення (`redirect:/books`).
 
 ### Маршрути коментарів (`CommentsController`)
 

@@ -6,15 +6,18 @@ import org.springframework.web.bind.annotation.*;
 import sumdu.edu.ua.core.domain.Book;
 import sumdu.edu.ua.core.domain.PageRequest;
 import sumdu.edu.ua.core.port.CatalogRepositoryPort;
+import sumdu.edu.ua.service.MailService;
 
 @Controller
 @RequestMapping("/books")
 public class BooksController {
 
     private final CatalogRepositoryPort bookRepo;
+    private final MailService mailService;
 
-    public BooksController(CatalogRepositoryPort bookRepo) {
+    public BooksController(CatalogRepositoryPort bookRepo, MailService mailService) {
         this.bookRepo = bookRepo;
+        this.mailService = mailService;
     }
 
     @GetMapping
@@ -32,7 +35,8 @@ public class BooksController {
 
     @PostMapping
     public String addBook(@ModelAttribute("bookForm") Book book) {
-        bookRepo.add(book.getTitle(), book.getAuthor(), book.getPubYear());
+        Book savedBook = bookRepo.add(book.getTitle(), book.getAuthor(), book.getPubYear());
+        mailService.sendNewBookEmail(savedBook != null ? savedBook : book);
         return "redirect:/books";
     }
 }
