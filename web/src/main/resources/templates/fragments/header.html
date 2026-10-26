@@ -1,0 +1,13 @@
+<div th:fragment="header" xmlns:th="http://www.thymeleaf.org">
+    <meta charset="UTF-8">
+    <title>MPF Books</title>
+
+    <nav>
+        <a th:href="@{/books}">Books</a> |
+        <a th:href="@{/books(lang='uk')}">UA</a> |
+        <a th:href="@{/books(lang='en')}">EN</a> |
+        <a th:href="@{/books(lang='fr')}">FR</a>
+    </nav>
+
+    <hr>
+</div>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/header :: header}"></head>
+
+<body>
+
+<h1 th:text="#{title.books}">Каталог книг</h1>
+
+<p th:if="${#lists.isEmpty(books)}"
+   th:text="#{label.noBooks}">Немає книг.</p>
+
+<ul th:unless="${#lists.isEmpty(books)}">
+    <li th:each="book : ${books}">
+        <a th:href="@{/comments(bookId=${book.id})}">
+            <span th:text="${book.title}"></span> —
+            <span th:text="${book.author}"></span>
+            (<span th:text="${book.pubYear}"></span>)
+        </a>
+    </li>
+</ul>
+
+<p>
+    <a th:href="@{/books/add}" th:text="#{form.add}">Додати книгу</a>
+</p>
+
+</body>
+</html>

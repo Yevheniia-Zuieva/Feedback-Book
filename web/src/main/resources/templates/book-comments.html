@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments/header :: header}"></head>
+
+<body>
+
+<h1>
+    <span th:text="#{title.comments}">Коментарі до книги</span>: 
+    <span th:text="${book.title}"></span>
+</h1>
+
+<p th:if="${#lists.isEmpty(comments)}" th:text="#{label.noComments}">Коментарів поки немає.</p>
+
+<ul th:if="${!#lists.isEmpty(comments)}">
+    <li th:each="comment : ${comments}">
+        <strong th:text="${comment.author}"></strong>: 
+        <span th:text="${comment.text}"></span>
+        <form th:action="@{/comments/delete}" method="post" style="display:inline;">
+            <input type="hidden" name="bookId" th:value="${book.id}">
+            <input type="hidden" name="commentId" th:value="${comment.id}">
+            <button type="submit" th:text="#{label.delete}">Видалити</button>
+        </form>
+    </li>
+</ul>
+
+<h2><span th:text="#{label.addComment}">Додати коментар</span></h2>
+<form th:action="@{/comments}" method="post">
+    <input type="hidden" name="bookId" th:value="${book.id}">
+    <label>
+        <span th:text="#{label.author}">Автор</span>:
+        <input type="text" name="author" required>
+    </label><br>
+    <label>
+        <span th:text="#{label.comment}">Коментар</span>:<br>
+        <textarea name="text" required></textarea>
+    </label><br>
+    <button type="submit" th:text="#{label.add}">Додати</button>
+</form>
+
+<p><a th:href="@{/books}">← <span th:text="#{label.backToBooks}">Назад до каталогу</span></a></p>
+
+</body>
+</html>

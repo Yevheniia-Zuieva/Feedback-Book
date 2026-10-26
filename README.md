@@ -1,16 +1,16 @@
-# Книга відгуків (Spring Boot MVC / REST API)
+# Книга відгуків (Spring Boot MVC / Thymeleaf SSR & i18n)
 
 Проєкт реалізує багатомодульний вебдодаток для управління каталогом книг та додавання/перегляду відгуків. Архітектура побудована за багатомодульним принципом Maven (`core`, `persistence`, `web`).
 
-У цій версії вебрівень мігровано з застарілих сервлетів (`HttpServlet`) на архітектуру **Spring MVC** з обробкою запитів через єдиний **`DispatcherServlet`**. Замість ручної обробки HTTP-запитів реалізовано REST-контролери (`@RestController`), що автоматично серіалізують об'єкти у формат **JSON** за допомогою бібліотеки Jackson.
+У цій версії вебрівень мігровано на **серверний рендеринг (SSR)** за допомогою шаблонізатора **Thymeleaf**. Замість REST-контролерів з JSON-відповідями реалізовано MVC-контролери (`@Controller`), які генерують динамічні HTML-сторінки на основі об'єктів моделі (`Model`), забезпечують двостороннє зв'язування форм (Form Binding) та підтримують мультимовність (i18n).
 
 ## Технологічний стек
 
 - **JDK:** 21
 - **Maven:** 3.9.16
-- **Фреймворк:** Spring Boot 3.3.4 (`spring-boot-starter-web`, Spring MVC)
+- **Фреймворк:** Spring Boot 3.3.4 (`spring-boot-starter-web`, `spring-boot-starter-thymeleaf`)
+- **Шаблонізатор:** Thymeleaf (HTML5 / SSR)
 - **Вебсервер:** Вбудований Apache Tomcat (порт `8080`)
-- **JSON:** Jackson (`jackson-databind`)
 - **СУБД:** H2 (вбудована, файловий режим)
 - **Тестування:** JUnit 5, ArchUnit
 - **Архітектура:** Багатомодульний проєкт із розділенням на Domain/Ports/Adapters.
@@ -26,28 +26,43 @@ MPF_Labs/
 │   └── src/main/java/sumdu/edu/ua/core/
 ├── persistence/     # Реалізація портів доступу до БД H2 (@Repository)
 │   └── src/main/java/sumdu/edu/ua/persistence/
-└── web/             # Spring MVC контролери (@RestController), WebConfig (@EnableWebMvc) та статичний UI
-    ├── src/main/java/sumdu/edu/ua/web/
+└── web/             # MVC-контролери, Thymeleaf шаблони, конфігурація i18n
+    ├── src/main/java/sumdu/edu/ua/
+    │   ├── config/
+    │   │   ├── LanguageConfig.java   # Конфігурація i18n (LocaleResolver, Interceptor)
+    │   │   └── WebConfig.java        # Налаштування ресурсів та MVC
+    │   └── web/
+    │       ├── AppInit.java          # Точка входу Spring Boot
+    │       └── controller/
+    │           ├── BooksController.java     # Маршрутизація каталогу книг
+    │           └── CommentsController.java  # Маршрутизація коментарів
     └── src/main/resources/
-        ├── public/index.html
-        └── application.properties
+        ├── application.properties    # Налаштування UTF-8 та Thymeleaf
+        ├── messages.properties       # Ресурсний бандл (Українська / Default)
+        ├── messages_en.properties    # Ресурсний бандл (Англійська)
+        ├── messages_fr.properties    # Ресурсний бандл (Французька)
+        └── templates/
+            ├── books.html            # Головний каталог книг
+            ├── book-form.html        # Форма додавання книги
+            ├── book-comments.html    # Перегляд та додавання відгуків
+            └── fragments/
+                └── header.html       # Спільний фрагмент шапки та навігації
 ```
 
-## Архітектура Spring MVC та маршрутизація
+## Архітектура Spring MVC, Thymeleaf та i18n
 
-- **`DispatcherServlet` (Front Controller):** єдиний сервлет-вхід, що перехоплює всі вхідні HTTP-запити та передає їх на відповідні контролери.
-- **REST-контролери (`@RestController`):**
-  - `BooksApiController` — обробляє маршрути за префіксом `/api/books`.
-  - `CommentsApiController` — обробляє маршрути за префіксом `/api/comments`.
-- **Конфігурація Spring MVC (`WebConfig.java`):**
-  - Анотований `@Configuration` та `@EnableWebMvc`.
-  - Реалізує `WebMvcConfigurer` для налаштування обробки статичних ресурсів (`ResourceHandlerRegistry`).
-- **Автоматична JSON-серіалізація:** об'єкти повертаються через `ResponseEntity<T>`, а Jackson автоматично конвертує їх у JSON та виставляє заголовки `Content-Type: application/json`.
+- **Серверний рендеринг (SSR):** контролери повертають назви HTML-представлень (наприклад, `return "books"`), а `ThymeleafViewResolver` рендерить підсумковий HTML з даними з `Model`.
+- **Зв'язування форм (Form Binding):** у шаблоні `book-form.html` атрибути `th:object="${bookForm}"` та `th:field="*{fieldName}"` забезпечують автоматичний двосторонній мапінг полів HTML-форми на Java-об'єкт `Book`.
+- **Локалізація та мультимовність (i18n):**
+  - Використовується `CookieLocaleResolver` для збереження обраної мови у кукі `lang` (мова за замовчуванням — українська `uk`).
+  - `LocaleChangeInterceptor` перехоплює параметр `?lang=` у URL (наприклад, `/books?lang=en`).
+  - Усі текстові елементи виводяться через ключі ресурсних бандлів `th:text="#{key}"`.
+- **Шаблонізація (Layout Fragments):** спільний заголовок та меню навігації винесено у фрагмент `fragments/header.html` та підключаються на сторінках через `th:replace="~{fragments/header :: header}"`.
 
 ## Бізнес-правила
 
-- **Валідація полів:** при додаванні книги чи коментаря виконується перевірка обов'язкових полів (назва, автор, текст). При недотриманні умов повертається статус `400 Bad Request`.
-- **Видалення відгуків:** згідно з доменним правилом у `CommentService`, відгук дозволено видаляти лише протягом 24 годин з моменту створення.
+- **Умовне відображення:** якщо список книг або коментарів порожній, у шаблонах використовується `th:if` / `th:unless` для відображення відповідного повідомлення ("Немає книг.", "Коментарів поки немає.").
+- **Видалення відгуків:** згідно з доменним правилом у `CommentService`, відгук до книги дозволено видаляти лише протягом 24 годин з моменту створення.
 
 ## Команди запуску
 
@@ -68,7 +83,7 @@ MPF_Labs/
 
    - **Або напряму через IDE:** запустити метод `main()` у класі `web/src/main/java/sumdu/edu/ua/web/AppInit.java`.
 
-Після запуску вебклієнт буде доступний у браузері за адресою: `http://localhost:8080/`
+Після запуску вебклієнт буде доступний у браузері за адресою: `http://localhost:8080/books`
 
 ## Архітектурні тести (ArchUnit)
 
@@ -83,21 +98,16 @@ MPF_Labs/
 mvn test
 ```
 
-## Список REST API ендпоїнтів
+## Доступні вебсторінки та маршрути
 
-### Статичний вебклієнт
+### Маршрути каталогу книг (`BooksController`)
 
-- **`GET /`** або **`GET /index.html`** — статична HTML-сторінка, яка взаємодіє з REST API через JavaScript `fetch()`.
+- **`GET /books`** — відображення каталогу книг (`books.html`). Підтримує перемикання мов через параметр `?lang=en` або `?lang=fr`.
+- **`GET /books/add`** — відображення форми додавання нової книги (`book-form.html`).
+- **`POST /books`** — обробка відправки форми створення книги з перенаправленням (`redirect:/books`).
 
-### API книг (`BooksApiController`)
+### Маршрути коментарів (`CommentsController`)
 
-- **`GET /api/books`** — повертає JSON-список усіх книг (з підтримкою пошуку `q` та пагінації `page`, `size`).
-- **`GET /api/books/{id}`** — повертає деталі конкретної книги за її `id` (або `404 Not Found`).
-- **`POST /api/books`** — створює нову книгу (статус `201 Created`).
-  - *Тіло запиту (JSON):* `{"title": "The Hunger Games", "author": "Suzanne Collins", "pubYear": 2008}`
-
-### API коментарів (`CommentsApiController`)
-
-- **`GET /api/comments?bookId={id}`** — повертає JSON-список коментарів до вказаної книги.
-- **`POST /api/comments`** — додає новий коментар (статус `201 Created`).
-- **`DELETE /api/comments/{id}?bookId={bookId}`** — видаляє коментар за його `id` (статус `204 No Content`).
+- **`GET /comments?bookId={id}`** — відображення списку коментарів до книги (`book-comments.html`).
+- **`POST /comments`** — додавання нового коментаря до книги з перенаправленням (`redirect:/comments?bookId={id}`).
+- **`POST /comments/delete`** — видалення коментаря за `commentId` та `bookId` з перенаправленням (`redirect:/comments?bookId={id}`).
