@@ -1,19 +1,19 @@
-# Книга відгуків (Spring Boot Starter)
+# Книга відгуків (Spring Boot MVC / REST API)
 
 Проєкт реалізує багатомодульний вебдодаток для управління каталогом книг та додавання/перегляду відгуків. Архітектура побудована за багатомодульним принципом Maven (`core`, `persistence`, `web`).
 
-У цій версії вебрівень мігровано на **Spring Boot Starter** із реалізацією принципів Інверсії управління (IoC) та Впровадження залежностей (DI). Класичні Jakarta Servlets зареєстровані як Spring-біни за допомогою `ServletRegistrationBean` у класі конфігурації. Для збереження даних застосовується вбудована база даних H2 (JDBC).
+У цій версії вебрівень мігровано з застарілих сервлетів (`HttpServlet`) на архітектуру **Spring MVC** з обробкою запитів через єдиний **`DispatcherServlet`**. Замість ручної обробки HTTP-запитів реалізовано REST-контролери (`@RestController`), що автоматично серіалізують об'єкти у формат **JSON** за допомогою бібліотеки Jackson.
 
 ## Технологічний стек
 
-* **JDK:** 21
-* **Maven:** 3.9.16
-* **Фреймворк:** Spring Boot 3.3.4 (`spring-boot-starter`, `spring-boot-starter-web`)
-* **Вебсервер:** Вбудований Apache Tomcat
-* **JSON:** Jackson (включено у Spring Boot Web)
-* **СУБД:** H2 (вбудована, файловий режим)
-* **Тестування:** JUnit 5, ArchUnit
-* **Архітектура:** Багатомодульний проєкт із розділенням на Domain/Ports/Adapters.
+- **JDK:** 21
+- **Maven:** 3.9.16
+- **Фреймворк:** Spring Boot 3.3.4 (`spring-boot-starter-web`, Spring MVC)
+- **Вебсервер:** Вбудований Apache Tomcat (порт `8080`)
+- **JSON:** Jackson (`jackson-databind`)
+- **СУБД:** H2 (вбудована, файловий режим)
+- **Тестування:** JUnit 5, ArchUnit
+- **Архітектура:** Багатомодульний проєкт із розділенням на Domain/Ports/Adapters.
 
 ## Структура проєкту
 
@@ -26,28 +26,28 @@ MPF_Labs/
 │   └── src/main/java/sumdu/edu/ua/core/
 ├── persistence/     # Реалізація портів доступу до БД H2 (@Repository)
 │   └── src/main/java/sumdu/edu/ua/persistence/
-└── web/             # Spring Boot конфігурація (@SpringBootApplication), ServletRegistrationBean, сервлети та статичний UI
+└── web/             # Spring MVC контролери (@RestController), WebConfig (@EnableWebMvc) та статичний UI
     ├── src/main/java/sumdu/edu/ua/web/
-    └── src/main/resources/application.properties
+    └── src/main/resources/
+        ├── public/index.html
+        └── application.properties
 ```
 
-## Конфігурація та IoC/DI
+## Архітектура Spring MVC та маршрутизація
 
-* **Головний клас:** `AppInit.java` з анотацією `@SpringBootApplication`.
-* **Конфігурація бінів (`ServletConfig.java`):**
-
-  * Анотований `@Configuration`.
-  * Реєстрація сервлетів `BooksServlet` та `CommentsServlet` у контейнері Spring за допомогою методів з анотацією `@Bean` (`ServletRegistrationBean`).
-  * Створено додатковий кастомний бін (`applicationName`).
-* **Ін'єкція залежностей:** передача репозиторіїв та сервісів виконується через конструктори (`Constructor Injection`).
-* **Файл параметрів (`application.properties`):**
-
-  * `server.port=8080` — налаштування порту сервера.
-  * Налаштування веб-контексту та автоконфігурацій Spring Boot.
+- **`DispatcherServlet` (Front Controller):** єдиний сервлет-вхід, що перехоплює всі вхідні HTTP-запити та передає їх на відповідні контролери.
+- **REST-контролери (`@RestController`):**
+  - `BooksApiController` — обробляє маршрути за префіксом `/api/books`.
+  - `CommentsApiController` — обробляє маршрути за префіксом `/api/comments`.
+- **Конфігурація Spring MVC (`WebConfig.java`):**
+  - Анотований `@Configuration` та `@EnableWebMvc`.
+  - Реалізує `WebMvcConfigurer` для налаштування обробки статичних ресурсів (`ResourceHandlerRegistry`).
+- **Автоматична JSON-серіалізація:** об'єкти повертаються через `ResponseEntity<T>`, а Jackson автоматично конвертує їх у JSON та виставляє заголовки `Content-Type: application/json`.
 
 ## Бізнес-правила
 
-* **Видалення відгуків:** згідно з доменним правилом у `CommentService`, відгук до книги дозволено видаляти лише протягом 24 годин з моменту його створення.
+- **Валідація полів:** при додаванні книги чи коментаря виконується перевірка обов'язкових полів (назва, автор, текст). При недотриманні умов повертається статус `400 Bad Request`.
+- **Видалення відгуків:** згідно з доменним правилом у `CommentService`, відгук дозволено видаляти лише протягом 24 годин з моменту створення.
 
 ## Команди запуску
 
@@ -60,14 +60,13 @@ MPF_Labs/
    ```
 
 2. **Запуск Spring Boot застосунку:**
-
-   * **Через Maven CLI:**
+   - **Через Maven CLI:**
 
      ```bash
      mvn spring-boot:run -pl web
      ```
 
-   * **Або напряму через IDE:** запустити метод `main()` у класі `web/src/main/java/sumdu/edu/ua/web/AppInit.java`.
+   - **Або напряму через IDE:** запустити метод `main()` у класі `web/src/main/java/sumdu/edu/ua/web/AppInit.java`.
 
 Після запуску вебклієнт буде доступний у браузері за адресою: `http://localhost:8080/`
 
@@ -75,8 +74,8 @@ MPF_Labs/
 
 У проєкті реалізовано автоматичну перевірку ізоляції шарів за допомогою бібліотеки ArchUnit. Тести перевіряють:
 
-* Незалежність модуля `core` від вищих шарів (`web`, `persistence`).
-* Відсутність прямих залежностей між `web` та `persistence` (окрім конфігураційних класів Spring IoC).
+- Незалежність модуля `core` від вищих шарів (`web`, `persistence`).
+- Відсутність прямих залежностей між `web` та `persistence` (окрім конфігураційних класів Spring IoC).
 
 Запуск тестів з кореневої директорії:
 
@@ -84,15 +83,21 @@ MPF_Labs/
 mvn test
 ```
 
-## Список доступних URL та ендпоїнтів
+## Список REST API ендпоїнтів
 
-### Клієнтський інтерфейс
+### Статичний вебклієнт
 
-* **`GET /`** або **`GET /index.html`** — статична HTML-сторінка з JavaScript-клієнтом для перегляду та додавання відгуків.
+- **`GET /`** або **`GET /index.html`** — статична HTML-сторінка, яка взаємодіє з REST API через JavaScript `fetch()`.
 
-### API сервлети
+### API книг (`BooksApiController`)
 
-* **`GET /books`** — повертає JSON-список усіх книг.
-* **`GET /books/{id}`** — повертає деталі конкретної книги за її `id`.
-* **`GET /comments`** — повертає JSON-список усіх відгуків через `CommentsServlet`.
-* **`POST /comments`** — додавання нового відгуку.
+- **`GET /api/books`** — повертає JSON-список усіх книг (з підтримкою пошуку `q` та пагінації `page`, `size`).
+- **`GET /api/books/{id}`** — повертає деталі конкретної книги за її `id` (або `404 Not Found`).
+- **`POST /api/books`** — створює нову книгу (статус `201 Created`).
+  - *Тіло запиту (JSON):* `{"title": "The Hunger Games", "author": "Suzanne Collins", "pubYear": 2008}`
+
+### API коментарів (`CommentsApiController`)
+
+- **`GET /api/comments?bookId={id}`** — повертає JSON-список коментарів до вказаної книги.
+- **`POST /api/comments`** — додає новий коментар (статус `201 Created`).
+- **`DELETE /api/comments/{id}?bookId={bookId}`** — видаляє коментар за його `id` (статус `204 No Content`).

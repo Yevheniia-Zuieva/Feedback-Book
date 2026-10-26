@@ -14,8 +14,8 @@ public class CommentService {
         this.repo = repo;
     }
 
-    public void delete(long bookId, long commentId, Instant createdAt) {
-        if (Duration.between(createdAt, Instant.now()).toHours() > 24) {
+    public void deleteComment(long bookId, long commentId, Instant createdAt) {
+        if (createdAt != null && Duration.between(createdAt, Instant.now()).toHours() > 24) {
             throw new IllegalStateException("Comment too old to delete");
         }
         repo.delete(bookId, commentId);
