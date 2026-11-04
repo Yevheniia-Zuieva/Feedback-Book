@@ -13,10 +13,10 @@ public class WebArchitectureTest {
                 .importPackages("sumdu.edu.ua.web");
 
         noClasses()
-                .that().resideInAPackage("..web..")
+                .that().resideInAPackage("sumdu.edu.ua.web..")
                 .and().doNotHaveSimpleName("ServletConfig")
                 .should().dependOnClassesThat()
-                .resideInAPackage("..persistence..")
+                .resideInAPackage("sumdu.edu.ua.persistence..")
                 .check(imported);
     }
 }

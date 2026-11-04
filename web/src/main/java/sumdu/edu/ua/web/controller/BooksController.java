@@ -3,7 +3,7 @@ package sumdu.edu.ua.web.controller;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import sumdu.edu.ua.core.domain.Book;
+import sumdu.edu.ua.core.domain.BookEntity;
 import sumdu.edu.ua.core.domain.PageRequest;
 import sumdu.edu.ua.core.port.CatalogRepositoryPort;
 import sumdu.edu.ua.service.MailService;
@@ -29,13 +29,13 @@ public class BooksController {
 
     @GetMapping("/add")
     public String showAddForm(Model model) {
-        model.addAttribute("bookForm", new Book());
+        model.addAttribute("bookForm", new BookEntity());
         return "book-form";
     }
 
-    @PostMapping
-    public String addBook(@ModelAttribute("bookForm") Book book) {
-        Book savedBook = bookRepo.add(book.getTitle(), book.getAuthor(), book.getPubYear());
+    @PostMapping({"", "/add"})
+    public String addBook(@ModelAttribute("bookForm") BookEntity book) {
+        BookEntity savedBook = bookRepo.add(book.getTitle(), book.getAuthor(), book.getYear());
         mailService.sendNewBookEmail(savedBook != null ? savedBook : book);
         return "redirect:/books";
     }

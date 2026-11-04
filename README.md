@@ -1,90 +1,93 @@
-# Книга відгуків (Spring Boot MVC / Thymeleaf SSR & FreeMarker E-mail SMTP)
+# Книга відгуків (Spring Boot MVC / JPA Hibernate ORM / Flyway / Thymeleaf SSR & FreeMarker E-mail)
 
-Проєкт реалізує багатомодульний вебдодаток для управління каталогом книг та додавання/перегляду відгуків. Архітектура побудована за багатомодульним принципом Maven (`core`, `persistence`, `web`).
+Проєкт реалізує багатомодульний вебдодаток для управління каталогом книг, користувачами та додавання/перегляду відгуків. Архітектура побудована за гексагональним принципом (Ports & Adapters) у Maven-модулях (`core`, `persistence`, `web`).
 
-У цій версії застосунок розширено підтримкою **автоматичного формування та надсилання HTML-листів** на базі шаблонізатора **FreeMarker** та протоколу **Gmail SMTP**. Веб-інтерфейс працює на **Thymeleaf SSR** з підтримкою мультимовності (i18n), а збереження приватних конфігурацій (SMTP credentials) реалізовано через змінні середовища у файлі `.env`.
+У цій версії здійснено **повний перехід із JDBC на повноцінний ORM-шар (Spring Data JPA / Hibernate 6)**, інтегровано **Flyway** для автоматичного версіонування схеми бази даних, розширено доменну модель сутністю `UserEntity`, реалізовано UI-функціонал перегляду коментарів конкретного користувача, а також збережено підтримку **автоматичного формування та надсилання HTML-листів** (FreeMarker + Gmail SMTP) та мультимовності (i18n).
 
 ## Технологічний стек
 
 - **JDK:** 21
 - **Maven:** 3.9.16
-- **Фреймворк:** Spring Boot 3.3.4 (`spring-boot-starter-web`, `spring-boot-starter-thymeleaf`, `spring-boot-starter-freemarker`, `spring-boot-starter-mail`)
-- **Шаблонізатори:**
-  - **Thymeleaf** (HTML5 SSR для вебсторінок)
-  - **Apache FreeMarker** (генерація HTML-листів)
+- **Фреймворк:** Spring Boot 3.3.4
+  - `spring-boot-starter-web` (Spring MVC)
+  - `spring-boot-starter-data-jpa` (Spring Data JPA & Hibernate 6.5.3)
+  - `spring-boot-starter-thymeleaf` (HTML5 SSR вебсторінки)
+  - `spring-boot-starter-freemarker` (генерація HTML-листів)
+  - `spring-boot-starter-mail` (JavaMailSender)
+- **Міграція БД:** Flyway (`flyway-core` 10.x)
+- **СУБД:** H2 Database (файловий режим `./data/booksdb`) + вебконсоль `H2 Console`
 - **Безпека секретів:** `spring-dotenv` (зчитування конфігурацій із `.env`)
 - **Поштовий протокол:** JavaMailSender (Gmail SMTP, порт 587 з TLS)
 - **Вебсервер:** Вбудований Apache Tomcat (порт `8080`)
-- **СУБД:** H2 (вбудована, файловий режим)
 - **Тестування:** JUnit 5, ArchUnit
-- **Архітектура:** Багатомодульний проєкт із розділенням на Domain/Ports/Adapters.
+- **Архітектура:** Трирівнева портивно-адаптерна архітектура (`core` / `persistence` / `web`).
 
 ## Структура проєкту
 
-Проєкт розділено на три незалежні модулі для чіткого розділення відповідальності (Separation of Concerns):
+Проєкт розділено на три незалежні модулі для забезпечення Separation of Concerns:
 
 ```text
 MPF_Labs/
-├── pom.xml          # Батьківський POM (управління версіями та модулями)
-├── core/            # Доменна модель, порти та сервіси бізнес-логіки (@Service)
+├── pom.xml                  # Батьківський POM (управління версіями та BOM)
+├── core/                    # Доменна модель (JPA-сутності), порти та сервіси бізнес-логіки
 │   └── src/main/java/sumdu/edu/ua/core/
-├── persistence/     # Реалізація портів доступу до БД H2 (@Repository)
+│       ├── domain/          # BookEntity, UserEntity, CommentEntity, Page, PageRequest
+│       ├── port/            # CatalogRepositoryPort, CommentRepositoryPort, UserRepositoryPort
+│       └── service/         # UserService, CommentService (@Transactional)
+├── persistence/             # Spring Data JPA репозиторії, JPA-адаптери та Flyway-міграції
 │   └── src/main/java/sumdu/edu/ua/persistence/
-└── web/             # MVC-контролери, Thymeleaf шаблони, FreeMarker поштовий сервіс
-    ├── .env                          # Локальні змінні середовища (SMTP Credentials - у .gitignore)
+│       ├── adapter/         # JpaCatalogRepositoryAdapter, JpaCommentRepositoryAdapter, JpaUserRepositoryAdapter
+│       ├── repository/      # BookRepository, UserRepository, CommentRepository (JpaRepository)
+│       └── resources/
+│           └── db/migration/# V1__init.sql (Flyway-скрипт створення таблиць та даних)
+└── web/                     # MVC-контролери, Thymeleaf-шаблони, FreeMarker поштовий сервіс
+    ├── .env                 # Локальні змінні середовища (SMTP Credentials - у .gitignore)
     ├── src/main/java/sumdu/edu/ua/
-    │   ├── config/
-    │   │   ├── EmailFreemarkerConfig.java   # Конфігурація окремого бандлу FreeMarker для листів
-    │   │   ├── LanguageConfig.java          # Конфігурація i18n (LocaleResolver, Interceptor)
-    │   │   └── WebConfig.java               # Налаштування ресурсів та MVC
-    │   ├── service/
-    │   │   ├── EmailTemplateProcessor.java  # Злиття FTL-шаблонів із моделлю даних
-    │   │   └── MailService.java             # Формування та надсилання MIME HTML-листів
+    │   ├── config/          # EmailFreemarkerConfig, LanguageConfig, WebConfig
+    │   ├── service/         # EmailTemplateProcessor, MailService
     │   └── web/
-    │       ├── AppInit.java                 # Точка входу Spring Boot
+    │       ├── AppInit.java # Точка входу Spring Boot (@EnableJpaRepositories, @EntityScan)
     │       └── controller/
-    │           ├── BooksController.java     # Маршрутизація каталогу книг та виклик пошти
-    │           └── CommentsController.java  # Маршрутизація коментарів
+    │           ├── BooksController.java    # Каталог книг та надсилання пошти
+    │           ├── CommentsController.java # Управління коментарями книг
+    │           └── UserController.java     # Сторінка коментарів конкретного користувача
     └── src/main/resources/
-        ├── application.properties    # Основні налаштування Spring Boot та ін'єкції з .env
-        ├── mail-templates/           # Каталог FreeMarker шаблонів електронної пошти
-        │   └── new_book.ftl          # HTML-шаблон сповіщення про нову книгу
-        ├── messages.properties       # Ресурсний бандл (Українська / Default)
-        ├── messages_en.properties    # Ресурсний бандл (Англійська)
-        ├── messages_fr.properties    # Ресурсний бандл (Французька)
+        ├── application.properties # Конфігурації JPA, Flyway, H2 Console, Mail
+        ├── mail-templates/
+        │   └── new_book.ftl       # HTML-шаблон листа про нову книгу
+        ├── messages*.properties   # Ресурсні бандли локалізації (uk, en, fr)
         └── templates/
-            ├── books.html            # Головний каталог книг (Thymeleaf)
-            ├── book-form.html        # Форма додавання книги (Thymeleaf)
-            ├── book-comments.html    # Перегляд та додавання відгуків (Thymeleaf)
+            ├── books.html         # Головний каталог книг
+            ├── book-form.html     # Форма додавання книги
+            ├── book-comments.html # Перегляд та додавання відгуків книги
+            ├── user-comments.html # Перегляд коментарів конкретного користувача
             └── fragments/
-                └── header.html       # Спільний фрагмент шапки та навігації
+                └── header.html    # Спільний фрагмент шапки
 ```
 
-## Архітектура, i18n та поштова система
+## Архітектура, JPA/Hibernate, Flyway та i18n
 
-- **Серверний рендеринг (Thymeleaf SSR):** MVC-контролери повертають назви HTML-представлень, а `ThymeleafViewResolver` формує сторінки на основі об'єкта `Model`.
-- **Локалізація та мультимовність (i18n):** Використовується `CookieLocaleResolver` та `LocaleChangeInterceptor` для обробки параметру `?lang=en|fr|uk`.
-- **Генерація листів (FreeMarker Engine):**
-  - Для поштових шаблонів налаштовано окремий бін `freemarkerEmailConfig` у класі `EmailFreemarkerConfig`, який зчитує FTL-шаблони з директорії `classpath:/mail-templates/`.
-  - `EmailTemplateProcessor` виконує рендеринг FTL-шаблону `new_book.ftl` у динамічний HTML-рядок.
-- **SMTP Інтеграція та Пошта (`MailService`):**
-  - При додаванні книги через `BooksController` автоматично викликається `mailService.sendNewBookEmail(savedBook)`.
-  - `MailService` створює `MimeMessage` із підтримкою HTML (`MimeMessageHelper`) і здійснює надсилання листа через `JavaMailSender` (Gmail SMTP).
-- **Безпека секретів (.env):**
-  - Усі чутливі дані (паролі застосунків, поштові скриньки) винесені у файл `.env` та автоматично завантажуються бібліотекою `spring-dotenv`. Файл `.env` додано до `.gitignore`.
+- **ORM & JPA (Hibernate 6):** Відбулася повна відмова від ручного написання JDBC-коду (`JdbcBookRepository`, `schema.sql`). Доменні моделі перетворено на JPA-сутності з анотаціями `@Entity`, `@Table`, `@Id`, `@GeneratedValue`.
+- **Міжтабличні зв'язки:**
+  - `BookEntity` (1) ⟷ (N) `CommentEntity`: `@OneToMany(mappedBy = "book", cascade = CascadeType.ALL, fetch = FetchType.LAZY)`.
+  - `UserEntity` (1) ⟷ (N) `CommentEntity`: `@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)`.
+  - `CommentEntity` (N) ⟷ (1) `BookEntity` / `UserEntity`: `@ManyToOne(fetch = FetchType.LAZY)`.
+- **Автоматична міграція (Flyway):** Версіонування схеми БД здійснюється за допомогою Flyway-скрипту `db/migration/V1__init.sql`, який автоматично створює таблиці `books`, `users`, `comments`, зовнішні ключі (`ON DELETE CASCADE` / `SET NULL`) та наповнює базу початковими тестовими даними.
+- **Spring Data JPA Repositories:** Доступ до даних забезпечують інтерфейси `BookRepository`, `UserRepository` та `CommentRepository` (з кастомними методами `findByUserId`, `findByBookId`, `findByUsername`), реалізації яких автоматично генеруються Spring Data.
+- **Серверний рендеринг (Thymeleaf SSR) & i18n:** MVC-контролери повертають назви HTML-шаблонів. Мультимовність підтримується через `CookieLocaleResolver` та `LocaleChangeInterceptor` (`?lang=en|fr|uk`).
+- **Генерація листів (FreeMarker Engine) & SMTP:** При додаванні нової книги `MailService` рендерить FTL-шаблон `new_book.ftl` і надсилає HTML-лист адміністратору через `JavaMailSender` (Gmail SMTP).
+- **H2 Console:** Доступна за адресою `/h2-console` для візуального аналізу таблиць та виконання SQL-запитів.
 
 ## Бізнес-правила
 
-- **Поштові сповіщення:** При успішному додаванні нової книги адміністратор отримує стилізований HTML-лист із логотипом з GitHub, назвою, автором, роком видання та датою додавання.
-- **Визначення раритетності:** У шаблоні `new_book.ftl` за допомогою директиви `<#if>` аналізується рік видання книги: якщо `year < 2000`, у листі відображається плашка **«Раритетне видання!»**.
-- **Умовне відображення в UI:** Якщо список книг або коментарів порожній, у Thymeleaf-шаблонах використовується `th:if` / `th:unless` для відображення відповідного повідомлення.
-- **Видалення відгуків:** Згідно з доменним правилом у `CommentService`, відгук до книги дозволено видаляти лише протягом 24 годин з моменту створення.
+- **Декларативні транзакції:** Усі сервісні методи в модулі `core` покриті анотацією `@Transactional(readOnly = true/false)` для забезпечення цілісності даних.
+- **Автоматичне прив'язування авторів:** При додаванні коментаря через UI застосунок автоматично знаходить існуючого користувача за введеним `username` або створює нового `UserEntity`, уникаючи порожніх полів `USER_ID` у БД.
+- **Поштові сповіщення:** При успішному додаванні нової книги адміністратор отримує стилізований HTML-лист. У разі відсутності SMTP-з'єднання помилка фіксується в логах, а книга все одно успішно зберігається в БД.
+- **Визначення раритетності:** У шаблоні `new_book.ftl` аналізується рік видання книги: якщо `year < 2000`, відображається плашка **«Раритетне видання!»**.
 
 ## Команди запуску
 
-Збірка здійснюється з кореня проєкту, запуск — з модуля `web`.
-
-1. **Налаштування секретів у файлі `web/.env`:** Перед першим запуском переконайтеся у наявності файлу `.env` з вашими даними:
+1. **Перевірка налаштувань `.env` у модулі `web/`:**
 
    Фрагмент кода
 
@@ -94,7 +97,7 @@ MPF_Labs/
    MAIL_ADMIN=recipient_email@gmail.com
    ```
 
-2. **Повна збірка проєкту та виконання тестів (у корені):**
+2. **Повна збірка проєкту та виконання тестів (з кореня):**
 
    Bash
 
@@ -111,16 +114,16 @@ MPF_Labs/
      mvn spring-boot:run -pl web
      ```
 
-   - **Або напряму через IDE:** запустити метод `main()` у класі `web/src/main/java/sumdu/edu/ua/web/AppInit.java`.
+   - **Або через IDE:** Запустити метод `main()` у класі `web/src/main/java/sumdu/edu/ua/web/AppInit.java`.
 
-Після запуску вебклієнт буде доступний у браузері за адресою: `http://localhost:8080/books`
+Після запуску застосунок доступний за адресою: `http://localhost:8080/books`
 
 ## Архітектурні тести (ArchUnit)
 
-У проєкті реалізовано автоматичну перевірку ізоляції шарів за допомогою бібліотеки ArchUnit. Тести перевіряють:
+У проєкті реалізовано автоматичну перевірку ізоляції шарів за допомогою ArchUnit:
 
-- Незалежність модуля `core` від вищих шарів (`web`, `persistence`).
-- Відсутність прямих залежностей між `web` та `persistence` (окрім конфігураційних класів Spring IoC).
+- Перевіряється, що модуль `core` (`sumdu.edu.ua.core..`) не залежить від вищих шарів `web` та `persistence`.
+- Перевіряється, що Spring MVC Контролери знаходяться виключно у пакеті `sumdu.edu.ua.web..`.
 
 Запуск тестів з кореневої директорії:
 
@@ -134,12 +137,20 @@ mvn test
 
 ### Маршрути каталогу книг (`BooksController`)
 
-- **`GET /books`** — відображення каталогу книг (`books.html`). Підтримує перемикання мов (`?lang=en`, `?lang=fr`).
+- **`GET /books`** — відображення каталогу книг (`books.html`). Підтримує перемикання мов (`?lang=en`, `?lang=fr`, `?lang=uk`).
 - **`GET /books/add`** — відображення форми додавання нової книги (`book-form.html`).
-- **`POST /books`** — обробка відправки форми створення книги, автоматичне відправлення HTML-листа через FreeMarker/SMTP та перенаправлення (`redirect:/books`).
+- **`POST /books`** (або `/books/add`) — обробка форми створення книги, збереження в JPA-репозиторії, відправка HTML-листа та перенаправлення (`redirect:/books`).
 
-### Маршрути коментарів (`CommentsController`)
+### Маршрути коментарів книг (`CommentsController`)
 
-- **`GET /comments?bookId={id}`** — відображення списку коментарів до книги (`book-comments.html`).
-- **`POST /comments`** — додавання нового коментаря до книги з перенаправленням (`redirect:/comments?bookId={id}`).
-- **`POST /comments/delete`** — видалення коментаря за `commentId` та `bookId` з перенаправленням (`redirect:/comments?bookId={id}`).
+- **`GET /comments?bookId={id}`** — перегляд коментарів до книги (`book-comments.html`).
+- **`POST /comments`** — додавання нового коментаря з автоматичною прив'язкою користувача.
+- **`POST /comments/delete`** — видалення коментаря за `commentId` та `bookId`.
+
+### Маршрути користувачів (`UserController`)
+
+- **`GET /users/{id}/comments`** — окрема сторінка зі списком усіх коментарів конкретного користувача (`user-comments.html`).
+
+### Адміністрування БД
+
+- **`GET /h2-console`** — вебконсоль бази даних H2 (JDBC URL: `jdbc:h2:file:./data/booksdb`, User: `sa`, Password: *порожньо*).

@@ -1,23 +1,22 @@
 package sumdu.edu.ua.core.service;
 
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
+import sumdu.edu.ua.core.domain.CommentEntity;
 import sumdu.edu.ua.core.port.CommentRepositoryPort;
-import java.time.Duration;
-import java.time.Instant;
+import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 public class CommentService {
-    private final CommentRepositoryPort repo;
 
-    public CommentService(CommentRepositoryPort repo) {
-        this.repo = repo;
+    private final CommentRepositoryPort commentRepositoryPort;
+
+    public CommentService(CommentRepositoryPort commentRepositoryPort) {
+        this.commentRepositoryPort = commentRepositoryPort;
     }
 
-    public void deleteComment(long bookId, long commentId, Instant createdAt) {
-        if (createdAt != null && Duration.between(createdAt, Instant.now()).toHours() > 24) {
-            throw new IllegalStateException("Comment too old to delete");
-        }
-        repo.delete(bookId, commentId);
+    public List<CommentEntity> getCommentsByUser(Long userId) {
+        return commentRepositoryPort.findByUserId(userId);
     }
 }

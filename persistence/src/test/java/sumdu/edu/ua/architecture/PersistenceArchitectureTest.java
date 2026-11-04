@@ -13,9 +13,9 @@ public class PersistenceArchitectureTest {
                 .importPackages("sumdu.edu.ua");
 
         noClasses()
-                .that().resideInAPackage("..persistence..")
+                .that().resideInAPackage("sumdu.edu.ua.persistence..")
                 .should().dependOnClassesThat()
-                .resideInAPackage("..web..")
+                .resideInAnyPackage("sumdu.edu.ua.web..")
                 .check(imported);
     }
 }

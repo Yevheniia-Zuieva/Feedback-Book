@@ -13,9 +13,9 @@ public class CoreArchitectureTest {
                 .importPackages("sumdu.edu.ua");
 
         noClasses()
-                .that().resideInAPackage("..core..")
+                .that().resideInAPackage("sumdu.edu.ua.core..")
                 .should().dependOnClassesThat()
-                .resideInAnyPackage("..web..", "..persistence..")
+                .resideInAnyPackage("sumdu.edu.ua.web..", "sumdu.edu.ua.persistence..")
                 .check(imported);
     }
 }

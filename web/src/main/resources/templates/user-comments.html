@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/header :: header}"></head>
+<body>
+
+<h1>Коментарі користувача: <span th:text="${username}"></span></h1>
+
+<p th:if="${#lists.isEmpty(comments)}">Цей користувач ще не залишав коментарів.</p>
+
+<ul th:if="${!#lists.isEmpty(comments)}">
+    <li th:each="c : ${comments}">
+        <p><strong th:text="${#temporals.format(c.createdAt, 'yyyy-MM-dd HH:mm')}"></strong></p>
+        <p th:text="${c.text}"></p>
+        <p>Книга: <a th:href="@{'/books/' + ${c.book.id}}" th:text="'Book #' + ${c.book.id}"></a></p>
+        <hr>
+    </li>
+</ul>
+
+<p><a th:href="@{/books}">← Назад до каталогу</a></p>
+
+</body>
+</html>

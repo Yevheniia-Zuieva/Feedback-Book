@@ -1,15 +1,16 @@
 package sumdu.edu.ua.service;
 
-import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import sumdu.edu.ua.core.domain.Book;
+import sumdu.edu.ua.core.domain.BookEntity;
 
-import java.time.LocalDateTime;
+import jakarta.mail.internet.MimeMessage;
+import java.time.Instant;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,25 +30,23 @@ public class MailService {
         this.templateProcessor = templateProcessor;
     }
 
-    public void sendNewBookEmail(Book book) {
+    public void sendNewBookEmail(BookEntity book) {
         Map<String, Object> model = new HashMap<>();
         model.put("title", book.getTitle());
         model.put("author", book.getAuthor());
-        model.put("year", book.getPubYear());
-        model.put("added", java.util.Date.from(java.time.Instant.now()));
+        model.put("year", book.getYear());
+        model.put("added", Date.from(Instant.now()));
 
         String html = templateProcessor.process("new_book.ftl", model);
 
         MimeMessage message = mailSender.createMimeMessage();
 
         try {
-            MimeMessageHelper helper =
-                    new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
-
+            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
             helper.setTo(adminEmail);
             helper.setSubject("Нова книга в каталозі");
             helper.setText(html, true);
-            helper.setFrom("bookapp@erlkonig.sumdu.edu.ua");
+            helper.setFrom(adminEmail);
 
             mailSender.send(message);
             log.info("Email sent successfully to {}", adminEmail);
