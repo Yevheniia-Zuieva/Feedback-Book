@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="#{title.login}"></title>
+</head>
+<body style="font-family: sans-serif; margin: 30px;">
+<h1 th:text="#{title.login}"></h1>
+
+<div th:if="${param.error}" style="color:red; margin-bottom: 10px;">
+    <span th:text="#{error.badCredentials}"></span>
+</div>
+<div th:if="${param.logout}" style="color:green; margin-bottom: 10px;">
+    <span th:text="#{msg.logoutSuccess}"></span>
+</div>
+
+<form th:action="@{/login}" method="post">
+    <div style="margin-bottom: 10px;">
+        <label th:text="#{label.email}"></label><br/>
+        <input type="email" name="email" required style="width: 250px;" />
+    </div>
+    <div style="margin-bottom: 10px;">
+        <label th:text="#{label.password}"></label><br/>
+        <input type="password" name="password" required style="width: 250px;" />
+    </div>
+    <button type="submit" th:text="#{label.loginBtn}"></button>
+</form>
+
+<p>
+    <span th:text="#{label.noAccount}"></span> 
+    <a th:href="@{/register}" th:text="#{label.registerBtn}"></a>
+</p>
+</body>
+</html>

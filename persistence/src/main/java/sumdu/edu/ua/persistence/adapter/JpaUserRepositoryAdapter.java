@@ -20,4 +20,19 @@ public class JpaUserRepositoryAdapter implements UserRepositoryPort {
     public Optional<UserEntity> findById(Long id) {
         return userRepository.findById(id);
     }
+
+    @Override
+    public Optional<UserEntity> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    @Override
+    public Optional<UserEntity> findByVerificationToken(String token) {
+        return userRepository.findByVerificationToken(token);
+    }
+
+    @Override
+    public UserEntity save(UserEntity user) {
+        return userRepository.save(user);
+    }
 }

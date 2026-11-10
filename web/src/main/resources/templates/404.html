@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="#{title.notFound}"></title>
+</head>
+<body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+    <h1 th:text="#{title.notFound}"></h1>
+    <p th:text="#{msg.notFound}"></p>
+    <p><a th:href="@{/books}" th:text="#{label.goHome}"></a></p>
+</body>
+</html>

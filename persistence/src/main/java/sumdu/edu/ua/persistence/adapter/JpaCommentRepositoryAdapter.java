@@ -36,9 +36,18 @@ public class JpaCommentRepositoryAdapter implements CommentRepositoryPort {
         BookEntity book = catalogRepo.findById(bookId)
                 .orElseThrow(() -> new IllegalArgumentException("Book not found: " + bookId));
 
-        // Шукаємо існуючого користувача за username, якщо не знайдено — створюємо нового користувача
-        UserEntity user = userRepo.findByUsername(author)
-                .orElseGet(() -> userRepo.save(new UserEntity(null, author, "pass123", "USER")));
+        // Шукаємо користувача за email. Якщо не знайдено — створюємо нового з коректними полями
+        UserEntity user = userRepo.findByEmail(author)
+                .orElseGet(() -> {
+                    UserEntity newUser = new UserEntity();
+                    String email = author.contains("@") ? author : author + "@example.com";
+                    newUser.setEmail(email);
+                    newUser.setNickname(author);
+                    newUser.setPassword("pass123");
+                    newUser.setRole("USER");
+                    newUser.setVerified(true);
+                    return userRepo.save(newUser);
+                });
 
         CommentEntity comment = new CommentEntity(null, text, book, user);
         return commentRepo.save(comment);

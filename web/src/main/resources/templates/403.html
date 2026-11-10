@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="#{title.forbidden}"></title>
+</head>
+<body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+    <h1 style="color: red; font-size: 48px;" th:text="#{title.forbidden}"></h1>
+    <h2 th:text="#{msg.forbidden}"></h2>
+    <p th:text="#{msg.forbiddenDetail}"></p>
+    <p><a th:href="@{/books}" th:text="#{label.backToBooks}"></a></p>
+</body>
+</html>

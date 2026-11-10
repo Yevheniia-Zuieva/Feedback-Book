@@ -1,28 +1,41 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/header :: header}"></head>
+<body style="font-family: sans-serif; margin: 20px;">
 
-<body>
+<h1 th:text="#{title.books}"></h1>
 
-<h1 th:text="#{title.books}">Каталог книг</h1>
+<!-- Кнопка додавання нової книги (тільки ADMIN) -->
+<div sec:authorize="hasRole('ADMIN')" style="margin-bottom: 15px;">
+    <a th:href="@{/books/add}" 
+       th:text="#{form.add}"
+       style="background-color: #4CAF50; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px;"></a>
+</div>
 
-<p th:if="${#lists.isEmpty(books)}"
-   th:text="#{label.noBooks}">Немає книг.</p>
+<p th:if="${#lists.isEmpty(books)}" th:text="#{label.noBooks}"></p>
 
-<ul th:unless="${#lists.isEmpty(books)}">
-    <li th:each="book : ${books}">
-        <a th:href="@{/comments(bookId=${book.id})}">
-            <span th:text="${book.title}"></span> —
-            <span th:text="${book.author}"></span>
-            (<span th:text="${book.pubYear}"></span>)
-        </a>
-    </li>
-</ul>
-
-<p>
-    <a th:href="@{/books/add}" th:text="#{form.add}">Додати книгу</a>
-</p>
+<table th:if="${!#lists.isEmpty(books)}" border="1" cellpadding="8" style="border-collapse: collapse; width: 100%;">
+    <thead>
+        <tr style="background-color: #f2f2f2;">
+            <th th:text="#{label.id}"></th>
+            <th th:text="#{label.title}"></th>
+            <th th:text="#{label.author}"></th>
+            <th th:text="#{label.year}"></th>
+            <th th:text="#{label.actions}"></th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="book : ${books}">
+            <td th:text="${book.id}">1</td>
+            <td th:text="${book.title}">Title</td>
+            <td th:text="${book.author}">Author</td>
+            <td th:text="${book.year}">2000</td>
+            <td>
+                <a th:href="@{/comments(bookId=${book.id})}" th:text="#{label.viewComments}"></a>
+            </td>
+        </tr>
+    </tbody>
+</table>
 
 </body>
 </html>

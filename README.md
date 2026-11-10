@@ -1,8 +1,8 @@
-# Книга відгуків (Spring Boot MVC / JPA Hibernate ORM / Flyway / Thymeleaf SSR & FreeMarker E-mail)
+# Книга відгуків (Spring Boot MVC / JPA Hibernate ORM / Spring Security / Flyway / Thymeleaf SSR & FreeMarker E-mail)
 
-Проєкт реалізує багатомодульний вебдодаток для управління каталогом книг, користувачами та додавання/перегляду відгуків. Архітектура побудована за гексагональним принципом (Ports & Adapters) у Maven-модулях (`core`, `persistence`, `web`).
+Проєкт реалізує багатомодульний вебдодаток для управління каталогом книг, користувачами та додавання/перегляду відгуків із повноцінною системою автентифікації та рольової авторизації. Архітектура побудована за гексагональним принципом (Ports & Adapters) у Maven-модулях (`core`, `persistence`, `web`).
 
-У цій версії здійснено **повний перехід із JDBC на повноцінний ORM-шар (Spring Data JPA / Hibernate 6)**, інтегровано **Flyway** для автоматичного версіонування схеми бази даних, розширено доменну модель сутністю `UserEntity`, реалізовано UI-функціонал перегляду коментарів конкретного користувача, а також збережено підтримку **автоматичного формування та надсилання HTML-листів** (FreeMarker + Gmail SMTP) та мультимовності (i18n).
+У цій версії впроваджено Spring Security із двома незалежними ланцюжками фільтрів (SecurityFilterChain), власний UserDetailsService для завантаження користувачів із бази даних H2, BCrypt-хешування паролів, розмежування прав доступу за ролями (USER, ADMIN), захист REST API (повернення коду 401 Unauthorized), власну сторінку 403 Forbidden, аудит подій безпеки, а також збережено підтримку автоматичного формування та надсилання HTML-листів (FreeMarker + Gmail SMTP) та мультимовності (i18n).
 
 ## Технологічний стек
 
@@ -10,13 +10,16 @@
 - **Maven:** 3.9.16
 - **Фреймворк:** Spring Boot 3.3.4
   - `spring-boot-starter-web` (Spring MVC)
+  - `spring-boot-starter-security` (Spring Security & Role-Based Access Control)
   - `spring-boot-starter-data-jpa` (Spring Data JPA & Hibernate 6.5.3)
   - `spring-boot-starter-thymeleaf` (HTML5 SSR вебсторінки)
+  - `thymeleaf-extras-springsecurity6` (теги `sec:authorize` у шаблонах)
   - `spring-boot-starter-freemarker` (генерація HTML-листів)
   - `spring-boot-starter-mail` (JavaMailSender)
 - **Міграція БД:** Flyway (`flyway-core` 10.x)
-- **СУБД:** H2 Database (файловий режим `./data/booksdb`) + вебконсоль `H2 Console`
+- **СУБД:** H2 Database (файловий режим `./data/booksdb`) + вебконсоль H2 Console
 - **Безпека секретів:** `spring-dotenv` (зчитування конфігурацій із `.env`)
+- **Шифрування паролів:** `BCryptPasswordEncoder`
 - **Поштовий протокол:** JavaMailSender (Gmail SMTP, порт 587 з TLS)
 - **Вебсервер:** Вбудований Apache Tomcat (порт `8080`)
 - **Тестування:** JUnit 5, ArchUnit
@@ -28,62 +31,83 @@
 
 ```text
 MPF_Labs/
-├── pom.xml                  # Батьківський POM (управління версіями та BOM)
-├── core/                    # Доменна модель (JPA-сутності), порти та сервіси бізнес-логіки
+├── pom.xml                  # Батьківський POM (управління версіями, BOM та jackson-bom)
+├── core/                    # Доменна модель, порти, кастомний UserDetailsService та бізнес-логіка
 │   └── src/main/java/sumdu/edu/ua/core/
 │       ├── domain/          # BookEntity, UserEntity, CommentEntity, Page, PageRequest
 │       ├── port/            # CatalogRepositoryPort, CommentRepositoryPort, UserRepositoryPort
-│       └── service/         # UserService, CommentService (@Transactional)
+│       └── service/         # AppUserDetailsService, UserService, CommentService (@Transactional)
 ├── persistence/             # Spring Data JPA репозиторії, JPA-адаптери та Flyway-міграції
 │   └── src/main/java/sumdu/edu/ua/persistence/
 │       ├── adapter/         # JpaCatalogRepositoryAdapter, JpaCommentRepositoryAdapter, JpaUserRepositoryAdapter
 │       ├── repository/      # BookRepository, UserRepository, CommentRepository (JpaRepository)
 │       └── resources/
-│           └── db/migration/# V1__init.sql (Flyway-скрипт створення таблиць та даних)
-└── web/                     # MVC-контролери, Thymeleaf-шаблони, FreeMarker поштовий сервіс
+│           └── db/migration/# Flyway-скрипти (V1__init.sql, V3__signup.sql)
+└── web/                     # SecurityConfig, MVC-контролери, Thymeleaf-шаблони, FreeMarker поштовий сервіс
     ├── .env                 # Локальні змінні середовища (SMTP Credentials - у .gitignore)
     ├── src/main/java/sumdu/edu/ua/
-    │   ├── config/          # EmailFreemarkerConfig, LanguageConfig, WebConfig
-    │   ├── service/         # EmailTemplateProcessor, MailService
+    │   ├── config/          # SecurityConfig, EmailFreemarkerConfig, LanguageConfig, WebConfig
+    │   ├── service/         # EmailTemplateProcessor, MailService, SecurityAuditLogger
     │   └── web/
     │       ├── AppInit.java # Точка входу Spring Boot (@EnableJpaRepositories, @EntityScan)
     │       └── controller/
-    │           ├── BooksController.java    # Каталог книг та надсилання пошти
-    │           ├── CommentsController.java # Управління коментарями книг
-    │           └── UserController.java     # Сторінка коментарів конкретного користувача
+    │           ├── AuthController.java     # Форми /login, /register та підтвердження акаунту
+    │           ├── BooksController.java    # Каталог книг та надсилання пошти (ADMIN / USER)
+    │           ├── CommentsController.java # Управління коментарями (ADMIN / USER)
+    │           ├── UserController.java     # Перегляд коментарів користувача
+    │           └── ErrorController.java    # Кастомні сторінки помилок (/403, /404)
     └── src/main/resources/
-        ├── application.properties # Конфігурації JPA, Flyway, H2 Console, Mail
+        ├── application.properties # Конфігурації JPA, Flyway, H2 Console, Mail, Security
         ├── mail-templates/
         │   └── new_book.ftl       # HTML-шаблон листа про нову книгу
         ├── messages*.properties   # Ресурсні бандли локалізації (uk, en, fr)
         └── templates/
-            ├── books.html         # Головний каталог книг
-            ├── book-form.html     # Форма додавання книги
-            ├── book-comments.html # Перегляд та додавання відгуків книги
-            ├── user-comments.html # Перегляд коментарів конкретного користувача
+            ├── books.html         # Каталог книг (із динамічними кнопками за ролями)
+            ├── book-form.html     # Форма додавання книги (ADMIN)
+            ├── book-comments.html # Перегляд та додавання відгуків
+            ├── user-comments.html # Коментарі конкретного користувача
+            ├── login.html         # Форма входу Spring Security (/login)
+            ├── register.html      # Форма реєстрації нового користувача (/register)
+            ├── 403.html           # Сторінка доступ заборонено (403 Forbidden)
             └── fragments/
-                └── header.html    # Спільний фрагмент шапки
+                └── header.html    # Спільна шапка з відображенням ім'я користувача та кнопкою Logout
 ```
 
-## Архітектура, JPA/Hibernate, Flyway та i18n
+## Архітектура, JPA/Hibernate, Spring Security, Flyway та i18n
 
-- **ORM & JPA (Hibernate 6):** Відбулася повна відмова від ручного написання JDBC-коду (`JdbcBookRepository`, `schema.sql`). Доменні моделі перетворено на JPA-сутності з анотаціями `@Entity`, `@Table`, `@Id`, `@GeneratedValue`.
+- **Двошарова конфігурація Spring Security (SecurityConfig):**
+  - **`@Order(1) API Security Filter Chain (`/api/**`):** Налаштовано спеціально для REST API. Будь-які неавторизовані запити безперешкодно повертають код відповіді 401 Unauthorized (без перенаправлення на сторінку логіну). Доступ до `/api/**` дозволено виключно користувачам з роллю ADMIN.
+  - **`@Order(2) Web Security Filter Chain`:** Захищає сторінки UI. Дозволяє безперешкодний доступ (`permitAll`) до статичних ресурсів (`/css/**`, `/js/**`, `/images/**`), сторінок логіну (`/login`), реєстрації (`/register`) та вебконсолі H2 (`/h2-console/**`). Усі неавторизовані спроби відкрити захищені HTML-сторінки перенаправляються на `/login`.
+- **Власний UserDetailsService (`AppUserDetailsService`):** Сервіс із модуля `core` завантажує `UserEntity` за електронною поштою (`email`) та перетворює її на об'єкт `UserDetails` із виставленням відповідної ролі (`ROLE_USER` чи `ROLE_ADMIN`) та перевіркою прапорця `verified` (блокування неактивованих акаунтів).
+- **BCrypt Парольний Енкодер:** Паролі користувачів зберігаються у базі даних виключно у вигляді хешу `BCryptPasswordEncoder`.
+- **ORM & JPA (Hibernate 6):** Доменні моделі перетворено на JPA-сутності з анотаціями `@Entity`, `@Table`, `@Id`, `@GeneratedValue`.
 - **Міжтабличні зв'язки:**
   - `BookEntity` (1) ⟷ (N) `CommentEntity`: `@OneToMany(mappedBy = "book", cascade = CascadeType.ALL, fetch = FetchType.LAZY)`.
   - `UserEntity` (1) ⟷ (N) `CommentEntity`: `@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)`.
   - `CommentEntity` (N) ⟷ (1) `BookEntity` / `UserEntity`: `@ManyToOne(fetch = FetchType.LAZY)`.
-- **Автоматична міграція (Flyway):** Версіонування схеми БД здійснюється за допомогою Flyway-скрипту `db/migration/V1__init.sql`, який автоматично створює таблиці `books`, `users`, `comments`, зовнішні ключі (`ON DELETE CASCADE` / `SET NULL`) та наповнює базу початковими тестовими даними.
-- **Spring Data JPA Repositories:** Доступ до даних забезпечують інтерфейси `BookRepository`, `UserRepository` та `CommentRepository` (з кастомними методами `findByUserId`, `findByBookId`, `findByUsername`), реалізації яких автоматично генеруються Spring Data.
-- **Серверний рендеринг (Thymeleaf SSR) & i18n:** MVC-контролери повертають назви HTML-шаблонів. Мультимовність підтримується через `CookieLocaleResolver` та `LocaleChangeInterceptor` (`?lang=en|fr|uk`).
+- **Автоматична міграція (Flyway):** Версіонування схеми БД здійснюється через Flyway-скрипти `db/migration/V1__init.sql` та `V3__signup.sql`. Скрипт V3 розширює таблицю `users` колонками `email`, `password`, `nickname`, `role`, `verified` та `verification_token`, а також ініціалізує початкові акаунти із захешованими паролями.
+- **Серверний рендеринг (Thymeleaf SSR) & Security Tags:** У шаблонах використовуються теги `sec:authorize="hasRole('ADMIN')"` для приховування адміністраторських дій та `sec:authorize="isAuthenticated()"` для відображення профілю та кнопки виходу. Мультимовність підтримується через `CookieLocaleResolver` та `LocaleChangeInterceptor` (`?lang=en|fr|uk`).
 - **Генерація листів (FreeMarker Engine) & SMTP:** При додаванні нової книги `MailService` рендерить FTL-шаблон `new_book.ftl` і надсилає HTML-лист адміністратору через `JavaMailSender` (Gmail SMTP).
-- **H2 Console:** Доступна за адресою `/h2-console` для візуального аналізу таблиць та виконання SQL-запитів.
+
+## Розмежування прав доступу (Ролі та Доступ)
+
+| Маршрут / Ресурс | Гості (Unauthenticated) | Користувачі (USER) | Адміністратори (ADMIN) |
+|---|---|---|---|
+| `/login`, `/register`, `/confirm` | ✅ Дозволено | ✅ Дозволено | ✅ Дозволено |
+| `/css/**`, `/js/**`, `/images/**` | ✅ Дозволено | ✅ Дозволено | ✅ Дозволено |
+| `GET /books` | ❌ Редирект на `/login` | ✅ Перегляд каталогу | ✅ Перегляд каталогу |
+| `GET /books/add`, `POST /books` | ❌ Редирект на `/login` | ⛔ 403 Forbidden | ✅ Додавання книг |
+| `GET /comments`, `POST /comments` | ❌ Редирект на `/login` | ✅ Перегляд та додавання | ✅ Перегляд та додавання |
+| `POST /comments/delete` | ❌ Редирект на `/login` | ⛔ 403 Forbidden | ✅ Видалення коментарів |
+| `GET /api/**` | ⛔ 401 Unauthorized | ⛔ 403 Forbidden | ✅ Доступ до REST API |
 
 ## Бізнес-правила
 
+- **Реєстрація та активація:** При реєстрації новий користувач отримує роль USER за замовчуванням. Пароль автоматично хешується через BCrypt перед збереженням у БД.
 - **Декларативні транзакції:** Усі сервісні методи в модулі `core` покриті анотацією `@Transactional(readOnly = true/false)` для забезпечення цілісності даних.
-- **Автоматичне прив'язування авторів:** При додаванні коментаря через UI застосунок автоматично знаходить існуючого користувача за введеним `username` або створює нового `UserEntity`, уникаючи порожніх полів `USER_ID` у БД.
+- **Аудит безпеки:** Події входу та виходу з системи фіксуються в логах за допомогою `SecurityAuditLogger`.
+- **Автоматичне прив'язування авторів:** При додаванні коментаря через UI застосунок прив'язує його до поточного авторизованого користувача (`UserEntity`).
 - **Поштові сповіщення:** При успішному додаванні нової книги адміністратор отримує стилізований HTML-лист. У разі відсутності SMTP-з'єднання помилка фіксується в логах, а книга все одно успішно зберігається в БД.
-- **Визначення раритетності:** У шаблоні `new_book.ftl` аналізується рік видання книги: якщо `year < 2000`, відображається плашка **«Раритетне видання!»**.
 
 ## Команди запуску
 
@@ -116,7 +140,19 @@ MPF_Labs/
 
    - **Або через IDE:** Запустити метод `main()` у класі `web/src/main/java/sumdu/edu/ua/web/AppInit.java`.
 
-Після запуску застосунок доступний за адресою: `http://localhost:8080/books`
+Після запуску застосунок доступний за адресою: `http://localhost:8080/books` (або `http://localhost:8080/login`).
+
+## Перевірка REST API (401 Unauthorized)
+
+Для перевірки захисту API без авторизації виконайте команду в терміналі:
+
+PowerShell
+
+```powershell
+curl.exe -i http://localhost:8080/api/books
+```
+
+Очікувана відповідь сервера: **`HTTP/1.1 401`** (`401 Unauthorized`).
 
 ## Архітектурні тести (ArchUnit)
 
@@ -132,25 +168,3 @@ Bash
 ```bash
 mvn test
 ```
-
-## Доступні вебсторінки та маршрути
-
-### Маршрути каталогу книг (`BooksController`)
-
-- **`GET /books`** — відображення каталогу книг (`books.html`). Підтримує перемикання мов (`?lang=en`, `?lang=fr`, `?lang=uk`).
-- **`GET /books/add`** — відображення форми додавання нової книги (`book-form.html`).
-- **`POST /books`** (або `/books/add`) — обробка форми створення книги, збереження в JPA-репозиторії, відправка HTML-листа та перенаправлення (`redirect:/books`).
-
-### Маршрути коментарів книг (`CommentsController`)
-
-- **`GET /comments?bookId={id}`** — перегляд коментарів до книги (`book-comments.html`).
-- **`POST /comments`** — додавання нового коментаря з автоматичною прив'язкою користувача.
-- **`POST /comments/delete`** — видалення коментаря за `commentId` та `bookId`.
-
-### Маршрути користувачів (`UserController`)
-
-- **`GET /users/{id}/comments`** — окрема сторінка зі списком усіх коментарів конкретного користувача (`user-comments.html`).
-
-### Адміністрування БД
-
-- **`GET /h2-console`** — вебконсоль бази даних H2 (JDBC URL: `jdbc:h2:file:./data/booksdb`, User: `sa`, Password: *порожньо*).

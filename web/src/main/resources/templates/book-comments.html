@@ -19,7 +19,11 @@
         <form th:action="@{/comments/delete}" method="post" style="display:inline;">
             <input type="hidden" name="bookId" th:value="${book.id}">
             <input type="hidden" name="commentId" th:value="${comment.id}">
-            <button type="submit" th:text="#{label.delete}">Видалити</button>
+            <td sec:authorize="hasRole('ADMIN')">
+                <a th:href="@{/comments/delete(id=${comment.id}, bookId=${book.id})}" 
+                th:text="#{label.delete}" 
+                style="color: red;">Видалити</a>
+            </td>
         </form>
     </li>
 </ul>

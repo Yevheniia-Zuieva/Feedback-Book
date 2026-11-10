@@ -1,13 +1,34 @@
-<div th:fragment="header" xmlns:th="http://www.thymeleaf.org">
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="header">
     <meta charset="UTF-8">
-    <title>MPF Books</title>
+    <title>Feedback Book</title>
+</head>
+<body>
+<div style="background-color:#f4f4f4; padding:10px; margin-bottom:15px; border-bottom: 1px solid #ccc;">
+    <span>
+        <span th:text="#{label.currentTime}"></span> <strong th:text="${currentTime}"></strong> | 
+        <span th:text="#{label.uri}"></span> <span th:text="${uri}"></span>
+    </span>
 
-    <nav>
-        <a th:href="@{/books}">Books</a> |
-        <a th:href="@{/books(lang='uk')}">UA</a> |
-        <a th:href="@{/books(lang='en')}">EN</a> |
-        <a th:href="@{/books(lang='fr')}">FR</a>
-    </nav>
+    <!-- Перемикач мов -->
+    <span style="margin-left: 20px;">
+        <a th:href="@{${uri}(lang='uk')}">UA</a> | 
+        <a th:href="@{${uri}(lang='en')}">EN</a> | 
+        <a th:href="@{${uri}(lang='fr')}">FR</a>
+    </span>
 
-    <hr>
+    <span style="float:right;">
+        <span sec:authorize="isAuthenticated()">
+            <span th:text="#{label.welcome}"></span> 
+            <strong th:text="${currentUserNickname != null ? currentUserNickname : #authentication.name}"></strong>!
+            [<a th:href="@{/logout}" th:text="#{label.logout}"></a>]
+        </span>
+        <span sec:authorize="isAnonymous()">
+            [<a th:href="@{/login}" th:text="#{label.loginBtn}"></a>] 
+            [<a th:href="@{/register}" th:text="#{label.registerBtn}"></a>]
+        </span>
+    </span>
 </div>
+</body>
+</html>

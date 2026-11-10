@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="#{title.confirmSuccess}"></title>
+</head>
+<body style="font-family: sans-serif; margin: 30px;">
+<h1 style="color:green;" th:text="#{title.confirmSuccess}"></h1>
+<p th:text="#{msg.confirmSuccess}"></p>
+<p><a th:href="@{/login}" th:text="#{label.loginBtn}"></a></p>
+</body>
+</html>
