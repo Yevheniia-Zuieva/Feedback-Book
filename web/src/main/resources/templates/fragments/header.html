@@ -1,21 +1,17 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:fragment="header">
-    <meta charset="UTF-8">
-    <title>Feedback Book</title>
-</head>
 <body>
-<div style="background-color:#f4f4f4; padding:10px; margin-bottom:15px; border-bottom: 1px solid #ccc;">
+
+<div th:fragment="header" style="background-color:#f4f4f4; padding:10px; margin-bottom:15px; border-bottom: 1px solid #ccc;">
     <span>
-        <span th:text="#{label.currentTime}"></span> <strong th:text="${currentTime}"></strong> | 
-        <span th:text="#{label.uri}"></span> <span th:text="${uri}"></span>
+        <span th:text="#{label.currentTime}"></span> <strong th:text="${currentTime}"></strong>
     </span>
 
     <!-- Перемикач мов -->
     <span style="margin-left: 20px;">
-        <a th:href="@{${uri}(lang='uk')}">UA</a> | 
-        <a th:href="@{${uri}(lang='en')}">EN</a> | 
-        <a th:href="@{${uri}(lang='fr')}">FR</a>
+        <a th:href="@{''(lang='uk')}">UA</a> | 
+        <a th:href="@{''(lang='en')}">EN</a> | 
+        <a th:href="@{''(lang='fr')}">FR</a>
     </span>
 
     <span style="float:right;">
@@ -30,5 +26,6 @@
         </span>
     </span>
 </div>
+
 </body>
 </html>
